@@ -117,15 +117,33 @@ class AttrMeter(object):
         # mean accuracy
         label_ma = (label_pos_recall + label_neg_recall) / 2
 
+        # mean precision
+        label_pos_prec = 1.0 * self.true_pos / (
+            self.true_pos + self.false_pos + eps
+        )
+        label_neg_prec = 1.0 * self.true_neg / (
+            self.true_neg + self.false_neg + eps
+        )
+        label_mp = (label_pos_prec + label_neg_prec) / 2
+
+        # F1
         label_pos_recall = np.mean(label_pos_recall)
         label_neg_recall = np.mean(label_neg_recall)
-        label_prec = (self.true_pos / (self.true_pos + self.false_pos + eps))
+        label_pos_prec = np.mean(label_pos_prec)
+        label_neg_prec = np.mean(label_neg_prec)
+        label_pos_f1 = np.mean(2 * label_pos_prec * label_pos_recall /
+                               (label_pos_prec + label_pos_recall + eps))
+        label_neg_f1 = np.mean(2 * label_neg_prec * label_neg_recall /
+                               (label_neg_prec + label_neg_recall + eps))
+        label_mf1 = np.mean(2 * label_ma * label_mp /
+                            (label_ma + label_mp + eps))
+
+        # acc
         label_acc = (self.true_pos /
                      (self.true_pos + self.false_pos + self.false_neg + eps))
-        label_f1 = np.mean(2 * label_prec * label_pos_recall /
-                           (label_prec + label_pos_recall + eps))
 
         ma = (np.mean(label_ma))
+        mp = (np.mean(label_mp))
 
         self.gt_pos_ins = np.array(self.gt_pos_ins)
         self.true_pos_ins = np.array(self.true_pos_ins)
@@ -149,7 +167,9 @@ class AttrMeter(object):
         instance_f1 = np.mean(instance_f1)
 
         res = [
-            ma, label_f1, label_pos_recall, label_neg_recall, instance_f1,
-            instance_acc, instance_prec, instance_recall
+            label_pos_prec, label_neg_prec, mp,
+            label_pos_recall, label_neg_recall, ma,
+            label_pos_f1, label_neg_f1, label_mf1,
+            instance_f1, instance_acc, instance_prec, instance_recall
         ]
         return res

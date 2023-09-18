@@ -146,7 +146,7 @@ def classification_eval(engine, epoch_id=0):
 
     if "ATTRMetric" in engine.config["Metric"]["Eval"][0]:
         metric_msg = ", ".join([
-            "evalres: ma: {:.5f} label_f1: {:.5f} label_pos_recall: {:.5f} label_neg_recall: {:.5f} instance_f1: {:.5f} instance_acc: {:.5f} instance_prec: {:.5f} instance_recall: {:.5f}".
+            "evalres: mp: {:.5f} label_pos_prec: {:.5f} label_neg_prec: {:.5f} ma: {:.5f} label_pos_recall: {:.5f} label_neg_recall: {:.5f} label_mf1: {:.5f} label_pos_f1: {:.5f} label_neg_f1: {:.5f} instance_f1: {:.5f} instance_acc: {:.5f} instance_prec: {:.5f} instance_recall: {:.5f}".
             format(*engine.eval_metric_func.attr_res())
         ])
         logger.info("[Eval][Epoch {}][Avg]{}".format(epoch_id, metric_msg))
