@@ -70,7 +70,8 @@ class MultiLabelLoss(nn.Layer):
     Multi-label loss
     """
 
-    def __init__(self, epsilon=None, size_sum=False, weight_ratio=False, weight_type=1, weight_alpha=0.1):
+    def __init__(self, epsilon=None, size_sum=False, weight_ratio=False, weight_type=1, weight_alpha=0.1,
+                 use_focal=False, focal_alpha=0.25, focal_gamma=2):
         super().__init__()
         if epsilon is not None and (epsilon <= 0 or epsilon >= 1):
             epsilon = None
@@ -79,6 +80,9 @@ class MultiLabelLoss(nn.Layer):
         self.weight_type = weight_type
         self.weight_alpha = weight_alpha
         self.size_sum = size_sum
+        self.use_focal = use_focal
+        self.focal_alpha = focal_alpha
+        self.focal_gamma = focal_gamma
 
     def _labelsmoothing(self, target, class_num):
         if target.ndim == 1 or target.shape[-1] != class_num:
@@ -92,24 +96,33 @@ class MultiLabelLoss(nn.Layer):
     def _binary_crossentropy(self, input, target, class_num):
         if self.weight_ratio:
             target, label_ratio = target[:, 0, :], target[:, 1, :]
+        else:
+            target = target[:, 0, :]
         if self.epsilon is not None:
             target = self._labelsmoothing(target, class_num)
-        cost = F.binary_cross_entropy_with_logits(
-            logit=input, label=target, reduction='none')
 
-        if self.weight_ratio:
-            targets_mask = paddle.cast(target > 0.5, 'float32')
-            if self.weight_type == 2:
-                weight = ratio2weight_2(
-                    targets_mask, paddle.to_tensor(label_ratio))
-            elif self.weight_type == 3:
-                weight = ratio2weight_3(targets_mask, paddle.to_tensor(
-                    label_ratio), self.weight_alpha)
-            else:
-                weight = ratio2weight_1(
-                    targets_mask, paddle.to_tensor(label_ratio))
-            weight = weight * (target > -1)
-            cost = cost * weight
+        if self.use_focal:
+            cost = F.sigmoid_focal_loss(
+                logit=input, label=target,
+                alpha=self.focal_alpha, gamma=self.focal_gamma, reduction='none'
+            )
+        else:
+            cost = F.binary_cross_entropy_with_logits(
+                logit=input, label=target, reduction='none')
+
+            if self.weight_ratio:
+                targets_mask = paddle.cast(target > 0.5, 'float32')
+                if self.weight_type == 2:
+                    weight = ratio2weight_2(
+                        targets_mask, paddle.to_tensor(label_ratio))
+                elif self.weight_type == 3:
+                    weight = ratio2weight_3(targets_mask, paddle.to_tensor(
+                        label_ratio), self.weight_alpha)
+                else:
+                    weight = ratio2weight_1(
+                        targets_mask, paddle.to_tensor(label_ratio))
+                weight = weight * (target > -1)
+                cost = cost * weight
 
         if self.size_sum:
             cost = cost.sum(1).mean() if self.size_sum else cost.mean()
